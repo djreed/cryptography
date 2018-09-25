@@ -2,58 +2,134 @@ package main
 
 import (
 	"fmt"
+	"math/big"
+	"os"
 	"sort"
-	"strings"
 )
 
 const (
-	SUBSTITUTION        = "EMGLOSUDCGDNCUSWYSFHNSFCYKDPUMLWGYICOXYSIPJCKQPKUGWGOLICGINCGACKSNISACYKZSCKXECJCKSHYSXCGOIDPKZCNKSHICGIWYGKKGKGOLDSILKGOIUSIGLEDSPWZUGFZCCNDGYYSFUSZCNXEOJNCGYEOWEUPXEZGACGNFGLKNSACIGOIYCKXCJUCIUZCFZCCNDGYYSFEUEKUZCSOCFZCCNCIACZEJNCSHFZEJZEGMXCYHCJUMGKUCY"
-	VIGENERE            = "KCCPKBGUFDPHQTYAVINRRTMVGRKDNBVFDETDGILTXRGUDDKOTFMBPVGEGLTGCKQRACQCWDNAWCRXIZAKFTLEWRPTYCQKYVXCHKFTPONCQQRHJVAJUWETMCMSPKQDYHJVDAHCTRLSVSKCGCZQQDZXGSFRLSWCWSJTBHAFSIASPRJAHKJRJUMVGKMITZHFPDISPZLVLGWTFPLKKEBDPGCEBSHCTJRWXBAFSPEZQNRWXCVYCGAONWDDKACKAWBBIKFTIOVKCGGHJVLNHIFFSQESVYCLACNVRWBBIREPBBVFEXOSCDYGZWPFDTKFQIYCWHJVLNHIQIBTKHJVNPIST"
-	AFFINE              = "KQEREJEBCPPCJCRKIEACUZBKRVPKRBCIBQCARBJCVFCUPKRIOFKPACUZQEPBKRXPEIIEABDKPBCPFCDCCAFIEABDKPBCPFEQPKAZBKRHAIBKAPCCIBURCCDKDCCJCIDFUIXPAFFERBICZDFKABICBBENEFCUPJCVKABPCYDCCDPKBCOCPERKIVKSCPICBRKIJPKABI"
-	UNSPECIFIED         = "BNVSNSIHQCEELSSKKYERIFJKXUMBGYKAMQLJTYAVFBKVTDVBPVVRJYYLAOKYMPQSCGDLFSRLLPROYGESEBUUALRWXMMASAZLGLEDFJBZAVVPXWICGJXASCBYEHOSNMULKCEAHTQOKMFLEBKFXLRRFDTZXCIWBJSICBGAWDVYDHAVFJXZIBKCGJIWEAHTTOEWTUHKRQVVRGZBXYIREMMASCSPBNLHJMBLRFFJELHWEYLWISTFVVYFJCMHYUYRUFSFMGESIGRLWALSWMNUHSIMYYITCCQPZSICEHBCCMZFEGVJYOCDEMMPGHVAAUMELCMOEHVLTIPSUYILVGFLMVWDVYDBTHFRAYISYSGKVSUUHYHGGCKTMBLRX"
-	FREQUENCY_ENGLISH   = "etaoinshrdlcumwfgypbvkjxqz"
-	FREQUENCY_ENGLISH_2 = "eatoinshrdlcumwfgypbvkjxqz"
+	SUBSTITUTION = "EMGLOSUDCGDNCUSWYSFHNSFCYKDPUMLWGYICOXYSIPJCKQPKUGWGOLICGINCGACKSNISACYKZSCKXECJCKSHYSXCGOIDPKZCNKSHICGIWYGKKGKGOLDSILKGOIUSIGLEDSPWZUGFZCCNDGYYSFUSZCNXEOJNCGYEOWEUPXEZGACGNFGLKNSACIGOIYCKXCJUCIUZCFZCCNDGYYSFEUEKUZCSOCFZCCNCIACZEJNCSHFZEJZEGMXCYHCJUMGKUCY"
+	VIGENERE     = "KCCPKBGUFDPHQTYAVINRRTMVGRKDNBVFDETDGILTXRGUDDKOTFMBPVGEGLTGCKQRACQCWDNAWCRXIZAKFTLEWRPTYCQKYVXCHKFTPONCQQRHJVAJUWETMCMSPKQDYHJVDAHCTRLSVSKCGCZQQDZXGSFRLSWCWSJTBHAFSIASPRJAHKJRJUMVGKMITZHFPDISPZLVLGWTFPLKKEBDPGCEBSHCTJRWXBAFSPEZQNRWXCVYCGAONWDDKACKAWBBIKFTIOVKCGGHJVLNHIFFSQESVYCLACNVRWBBIREPBBVFEXOSCDYGZWPFDTKFQIYCWHJVLNHIQIBTKHJVNPIST"
+	AFFINE       = "KQEREJEBCPPCJCRKIEACUZBKRVPKRBCIBQCARBJCVFCUPKRIOFKPACUZQEPBKRXPEIIEABDKPBCPFCDCCAFIEABDKPBCPFEQPKAZBKRHAIBKAPCCIBURCCDKDCCJCIDFUIXPAFFERBICZDFKABICBBENEFCUPJCVKABPCYDCCDPKBCOCPERKIVKSCPICBRKIJPKABI"
+	UNSPECIFIED  = "BNVSNSIHQCEELSSKKYERIFJKXUMBGYKAMQLJTYAVFBKVTDVBPVVRJYYLAOKYMPQSCGDLFSRLLPROYGESEBUUALRWXMMASAZLGLEDFJBZAVVPXWICGJXASCBYEHOSNMULKCEAHTQOKMFLEBKFXLRRFDTZXCIWBJSICBGAWDVYDHAVFJXZIBKCGJIWEAHTTOEWTUHKRQVVRGZBXYIREMMASCSPBNLHJMBLRFFJELHWEYLWISTFVVYFJCMHYUYRUFSFMGESIGRLWALSWMNUHSIMYYITCCQPZSICEHBCCMZFEGVJYOCDEMMPGHVAAUMELCMOEHVLTIPSUYILVGFLMVWDVYDBTHFRAYISYSGKVSUUHYHGGCKTMBLRX"
+	ENGLISH      = "ETAOINSHRDLCUMWFGYPBVKJXQZ"
 )
 
-type CharData struct {
-	char      string
-	count     int
-	frequency float64
-}
-
 type Pair struct {
-	Key   string
+	Key   rune
 	Value int
 }
 
 type PairList []Pair
 
 func main() {
-	frequency, size := frequencyTable(SUBSTITUTION)
-	fmt.Println(frequency, size)
+	if len(os.Args) < 2 {
+		panic("Must provide Affine ciphertext")
+	}
 
-	tuples := frequencyToTuples(frequency, size)
-	fmt.Println(tuples)
+	ciphertext := os.Args[1]
 
+	frequency, _ := frequencyTable(ciphertext)
 	sorted := rankByWordCount(frequency)
 
-	organized := pairCharacters(sorted)
+	keys := make([]rune, 0)
+	for i, pair := range sorted {
+		keys = append(keys, pair.Key)
+		fmt.Printf("%v: %s with %v occurrences\n", i, string(pair.Key), pair.Value)
+	}
 
-	str, key := substitute(SUBSTITUTION, strings.Join(organized, ""))
+	plaintext, a, b := solveAffine(ciphertext, keys)
 
-	fmt.Println("String: ", str, "Key: ", key)
+	fmt.Printf("Plain: %s\n(A, B) = (%v, %v)\n", plaintext, a, b)
+
+	// str, key := substitute(SUBSTITUTION, strings.Join(organized, ""))
+	// fmt.Println("String: ", str, "Key: ", key)
 
 }
 
-func frequencyTable(str string) (map[string]int, int) {
-	m := make(map[string]int)
+func solveAffine(cipher string, sorted []rune) (string, int, int) {
+	FIRST_SUB := 24
+	SECOND_SUB := 23
+
+	// For a certain substitution:
+	cipher_first, cipher_second := runeToInt(sorted[0]), runeToInt(sorted[1])
+	fmt.Printf("Cipher first: %s int %v\nCipher second: %s int %v\n", string(sorted[0]), cipher_first, string(sorted[1]), cipher_second)
+
+	// Create system of equations
+	plain_first, plain_second := runeToInt(rune(ENGLISH[FIRST_SUB])), runeToInt(rune(ENGLISH[SECOND_SUB]))
+	fmt.Printf("Plain first: %s int %v\nPlain second: %s int %v\n", string(ENGLISH[FIRST_SUB]), plain_first, string(ENGLISH[SECOND_SUB]), plain_second)
+
+	big26 := big.NewInt(26)
+
+	// Solve system of equations for (a)
+	var coeff *big.Int
+	var plain *big.Int
+	if cipher_first > cipher_second {
+		coeff = big.NewInt(int64(cipher_first - cipher_second))
+		plain = big.NewInt(int64(plain_first - plain_second))
+	} else {
+		coeff = big.NewInt(int64(cipher_second - cipher_first))
+		plain = big.NewInt(int64(plain_second - plain_first))
+	}
+	inverse := coeff.ModInverse(coeff, big26)
+	plain.Mod(plain, big26)
+	if inverse == nil {
+		panic("NO INVERSE AHH")
+	}
+
+	bigA := plain.Mul(plain, inverse)
+	bigA = bigA.Mod(bigA, big26)
+
+	a := int(bigA.Int64())
+	b := int(plain_first) - (int(a) * int(cipher_first))
+	bigB := big.NewInt(int64(b))
+	bigB = bigB.Mod(bigB, big26)
+	b = int(bigB.Int64())
+
+	text := decryptAffine(cipher, a, b)
+
+	return text, a, b
+}
+
+func decryptAffine(cipher string, inverse, b int) string {
+	plaintext := make([]rune, 0)
+	for _, char := range cipher {
+		charValue := big.NewInt(runeToInt(char))
+
+		// charEquivalent := SwapRune(char)
+		charValue.Sub(charValue, big.NewInt(int64(b)))
+		charValue.Mul(charValue, big.NewInt(int64(inverse)))
+		charValue.Mod(charValue, big.NewInt(26))
+
+		plaintext = append(plaintext, rune(intToChar(charValue.Int64())))
+	}
+	return string(plaintext)
+}
+
+func intToChar(i int64) rune {
+	return rune(i + 97)
+}
+
+func runeToInt(r rune) int64 {
+	switch {
+	case 97 <= r && r <= 122:
+		return int64(r - 97)
+	case 65 <= r && r <= 90:
+		return int64(r - 65)
+	default:
+		return 0
+	}
+}
+
+func frequencyTable(str string) (map[rune]int, int) {
+	m := make(map[rune]int)
 	for _, char := range str {
-		m[string(char)]++
+		m[char]++
 	}
 	return m, len(str)
 }
 
-func rankByWordCount(wordFrequencies map[string]int) PairList {
+func rankByWordCount(wordFrequencies map[rune]int) PairList {
 	pl := make(PairList, len(wordFrequencies))
 	i := 0
 	for k, v := range wordFrequencies {
@@ -62,36 +138,6 @@ func rankByWordCount(wordFrequencies map[string]int) PairList {
 	}
 	sort.Sort(sort.Reverse(pl))
 	return pl
-}
-
-func frequencyToTuples(m map[string]int, total int) []CharData {
-	charData := make([]CharData, 0)
-	for char, count := range m {
-		charData = append(charData, CharData{char, count, float64(count) / float64(total)})
-	}
-	return charData
-}
-
-func substitute(cipher string, organized string) (string, map[string]string) {
-	key := make(map[string]string, 0)
-	for i, char := range organized {
-		key[string(char)] = string(FREQUENCY_ENGLISH[i])
-	}
-
-	plaintext := cipher
-	for _, char := range cipher {
-		plaintext = plaintext + key[string(char)]
-	}
-
-	return plaintext, key
-}
-
-func pairCharacters(p PairList) []string {
-	chars := make([]string, 0)
-	for _, v := range p {
-		chars = append(chars, v.Key)
-	}
-	return chars
 }
 
 func (p PairList) Len() int           { return len(p) }
