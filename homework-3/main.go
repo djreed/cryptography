@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sort"
 )
 
@@ -12,8 +13,7 @@ const (
 	SUB4    = "ROESRDEYEOCSHWNRR"
 	ENGLISH = "ETAOINSHRDLCUMWFGYPBVKJXQZ"
 
-	// AFFINE  = "KQEREJEBCPPCJCRKIEACUZBKRVPKRBCIBQCARBJCVFCUPKRIOFKPACUZQEPBKRXPEIIEABDKPBCPFCDCCAFIEABDKPBCPFEQPKAZBKRHAIBKAPCCIBURCCDKDCCJCIDFUIXPAFFERBICZDFKABICBBENEFCUPJCVKABPCYDCCDPKBCOCPERKIVKSCPICBRKIJPKABI"
-	// ENGLISH = "ETAOINSHRDLCUMWFGYPBVKJXQZ"
+	// ENGLISH = "ABCDEFGHIJKLMNOPQRSTUVQXYZ"
 )
 
 type Pair struct {
@@ -24,11 +24,11 @@ type Pair struct {
 type PairList []Pair
 
 func main() {
-	// if len(os.Args) < 2 {
-	// 	panic("Must provide Affine ciphertext")
-	// }
+	if len(os.Args) < 2 {
+		panic("Must provide Affine ciphertext")
+	}
 
-	ciphertext := SUB4
+	ciphertext := os.Args[1]
 
 	frequency, _ := frequencyTable(ciphertext)
 	sorted := rankByWordCount(frequency)
