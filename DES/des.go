@@ -14,20 +14,23 @@ const (
 //Processes the given string and key through DES
 func main() {
 	message := strings.ToUpper(os.Args[1])
-	// prettyPrint("Plaintext", message)
+	prettyPrint("Plaintext", message)
 
 	binPlain := hexToBin(message)
-	// prettyPrint("Binary Plaintext", binPlain)
+	prettyPrint("Binary Plaintext", binPlain)
 
+	// In binary,
 	key := strings.ToUpper(os.Args[2])
-	// prettyPrint("Key", key)
+	prettyPrint("Key", key)
 
 	binKey := hexToBin(key)
-	// prettyPrint("Binary Key", binKey)
+	prettyPrint("Binary Key", binKey)
+
+	fmt.Println("//////////// Phase 1 ////////////")
 
 	// Apply PC1 to the initial key
 	keyPermute := permute(binKey, PC1)
-	// prettyPrint("Key Post-PC1", keyPermute)
+	prettyPrint("Key Post-PC1", keyPermute)
 
 	C := make([]string, 17)
 	D := make([]string, 17)
@@ -55,6 +58,8 @@ func main() {
 		prettyPrint(fmt.Sprintf("K%v", i), K[i])
 	}
 
+	fmt.Println("//////////// Phase 2 ////////////")
+
 	// Initial permutation of message
 	initPermute := permute(binPlain, IP)
 	// prettyPrint("Message", binPlain)
@@ -73,17 +78,21 @@ func main() {
 		L[i] = R[i-1]
 		prettyPrint(fmt.Sprintf("L%v", i), L[i])
 
-		R[i] = xor(L[i-1], f(R[i-1], K[i]))
+		fRes := f(R[i-1], K[i])
+		prettyPrint(fmt.Sprintf("f%v", i), fRes)
+		R[i] = xor(L[i-1], fRes)
 		prettyPrint(fmt.Sprintf("R%v", i), R[i])
 	}
 
+	prettyPrint("R16 L16", R[16]+L[16])
+
 	// Apply IP_INV to R(16)L(16)
 	finalBin := permute(R[16]+L[16], IP_INV)
-	prettyPrint("Encoded in Binary", finalBin)
+	prettyPrint("Post IP_INV in Binary", finalBin)
 
 	// to hex
 	finalHex := binToHex(finalBin)
-	prettyPrint("Encoded in Hex", finalHex)
+	prettyPrint("Ciphertext in Hex", finalHex)
 }
 
 //Shift the given string a number of bits to the left
@@ -139,22 +148,26 @@ func xor(l, r string) (xor string) {
 func f(rhs string, key string) string {
 	// E(R)
 	e := permute(rhs, E)
+	prettyPrint("E", e)
 
 	// 8 sets of 6 bits
 	blockSet := xor(key, e)
+	prettyPrint("K xor E", blockSet)
 
 	total := ""
 	for i := 0; i < 8; i++ {
 		blockStart := i * BLOCK_SIZE
 		blockEnd := blockStart + BLOCK_SIZE
 		block := blockSet[blockStart:blockEnd]
-		// prettyPrint(fmt.Sprintf("B%v", i), block)
+		prettyPrint(fmt.Sprintf("B%v", i+1), block)
 
 		sRes := s(block, i)
-		// prettyPrint(fmt.Sprintf("S(B%v)", i), sRes)
+		prettyPrint(fmt.Sprintf("S%v(B%v)", i+1, i+1), sRes)
 
 		total = total + sRes
 	}
+
+	prettyPrint("S(B)", total)
 
 	// apply P to S(B)
 	res := permute(total, P)
